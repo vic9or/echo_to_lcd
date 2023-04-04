@@ -2,6 +2,6 @@
 
 Check dmesg for major number  
 create character device with command:  
-mknod /dev/"device_name" -c "The assigned major number" 0  
+mknod /dev/"device_name" c "The assigned major number" 0  
 make sure you give it the appropriate permissions  
 whatever you echo into the character file will be displayed  
