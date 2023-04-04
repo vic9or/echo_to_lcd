@@ -33,6 +33,9 @@ static char lcd_buffer[18];
 #define PIN_RS gpio_nums[0]
 #define PIN_E gpio_nums[1]
 
+
+/*Simply turns on the E pin and turns it off shortly
+ *This is to tell the lcd to take in the value of its pins */
 void tap_PIN_E(void){
 	msleep(100);
 	gpio_set_value(PIN_E,1);
@@ -41,24 +44,30 @@ void tap_PIN_E(void){
 	msleep(100);
 }
 
+/*This functions takes in a character
+ *it then sets the appropriate value of the gpio pins to represent the character*/
 void send_byte_to_pins(char data){
 	int i;
 	for (i=0; i<8; i++){
 		gpio_set_value(gpio_nums[i+2],((data & (1<<i)) >> i));
 	}
-	tap_PIN_E();
+	tap_PIN_E();//sends the data
 
 	for (i=0; i<8; i++){
 		gpio_set_value(gpio_nums[i+2], 0);
 	}
 }
 
+/*Takes a character
+ * sets the RS pin to high to signal that it's for displaying the character*/
 void print_char_to_lcd(char data){
 	gpio_set_value(PIN_RS, 1);
 	msleep(100);
 	send_byte_to_pins(data);
 }
 
+/*Takes a character or data of type uint8_t (same thing~)
+ * Sets the RS pin to low to signal that its a signal for LCD setting */
 void send_instruction_to_lcd(uint8_t data){
 	gpio_set_value(PIN_RS, 0);
 	msleep(100);
@@ -83,7 +92,9 @@ static int lcd_close(struct inode *device_file, struct file *instance){
 static ssize_t lcd_write(struct file *File, const char *user_buffer, size_t count, loff_t *offs){
 	int copy_size = min(count, sizeof(lcd_buffer));
 	int unread_amount = copy_from_user(lcd_buffer, user_buffer, copy_size);
-	send_instruction_to_lcd(0x1);
+
+	send_instruction_to_lcd(0x1); //clears the lcd
+
 	int i;
 	for(i=0; i<copy_size-1;i++){
 		print_char_to_lcd(lcd_buffer[i]);
@@ -125,9 +136,9 @@ static int __init lcd_init(void){
 		}
 	}
 	
-	send_instruction_to_lcd(0x30);
-	send_instruction_to_lcd(0xf);
-	send_instruction_to_lcd(0x1);
+	send_instruction_to_lcd(0x30);//tells lcd to use 8 bit interface
+	send_instruction_to_lcd(0xf); //tells lcd to have cursor and blink
+	send_instruction_to_lcd(0x1); //clears the lcd
 
 	char greetings[] = "LCD ready...";
 	for(i=0; i<sizeof(greetings)-1;i++){
@@ -144,8 +155,7 @@ gpio_request_error:
 	return -1;
 }
 static void __exit lcd_release(void){
-	printk(KERN_INFO "releasing device\n");
-	send_instruction_to_lcd(0x1);
+	send_instruction_to_lcd(0x1); //clears the lcd
 	int i;
 	for(i=0; i<10; i++){
 		gpio_free(gpio_nums[i]);
